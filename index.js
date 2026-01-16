@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 });
 
 
-app.use('/health',(req,res)=>{
+app.get('/health',(req,res)=>{
     res.status(200).send('Server is healthy');
 })
 app.post('/register', async (req, res) => {
