@@ -394,3 +394,5 @@ function connectToMongoDB_ATLAS(){
       .then(() => console.log('MongoDB connected to Atlas DB'))
       .catch((err) => console.error('MongoDB connection error:', err));
 }
+
+export default app;
