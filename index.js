@@ -28,6 +28,9 @@ app.use((req, res, next) => {
 });
 
 
+app.get("/",(req,res)=>{
+    res.send("Welcome to PG Management Backend API");
+})
 app.get('/health',(req,res)=>{
     res.status(200).send('Server is healthy');
 })
