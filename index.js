@@ -394,8 +394,3 @@ function connectToMongoDB_ATLAS(){
       .then(() => console.log('MongoDB connected to Atlas DB'))
       .catch((err) => console.error('MongoDB connection error:', err));
 }
-
-
-app.listen(3000, () => {
-    console.log("Server is running on port 3000");
-});
