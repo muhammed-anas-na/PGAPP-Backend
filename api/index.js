@@ -2,10 +2,10 @@ import Express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import mongoose from "mongoose";
-import owner from './models/owner.js';
-import Room from './models/Room.js';
-import tenant from './models/tenant.js';
-import payment from './models/payment.js';
+import owner from '../models/owner.js';
+import Room from '../models/Room.js';
+import tenant from '../models/tenant.js';
+import payment from '../models/payment.js';
 
 const app = Express();
 app.use(cors());
@@ -392,7 +392,4 @@ function connectToMongoDB_ATLAS(){
       .catch((err) => console.error('MongoDB connection error:', err));
 }
 
-
-app.listen(3000, () => {
-    console.log("Server is running on port 3000");
-});
+export default app;
