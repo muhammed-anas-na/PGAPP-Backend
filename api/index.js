@@ -10,7 +10,41 @@ import payment from '../models/payment.js';
 const app = Express();
 app.use(cors());
 app.use(bodyParser.json());
-connectToMongoDB_ATLAS();
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function dbConnect() {
+  if (cached.conn) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
+
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+      console.log('MongoDB connected successfully');
+      return mongoose;
+    }).catch(err => {
+      console.error('MongoDB connection failed:', err);
+      cached.promise = null;
+      throw err;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
+}
 
 
 app.use((req, res, next) => {
@@ -50,7 +84,7 @@ app.post('/register', async (req, res) => {
         error: 'Invalid Indian phone number',
       });
     }
-
+    await dbConnect();
     const existingOwner = await owner.findOne({
       phoneNumber: phone_number,
     });
@@ -83,8 +117,12 @@ app.post('/register', async (req, res) => {
 });
 
 
-app.post('/login',(req,res)=>{
+app.post('/login',async(req,res)=>{
     const {phone_number} = req.body;
+    if(!phone_number){
+        return  res.status(400).json({error:'Phone number is required'});
+    }
+    await dbConnect();
     owner.findOne({phoneNumber:phone_number}).then((ownerData)=>{
         if(!ownerData){
             return res.status(404).json({error:'PG Owner not found'});
@@ -117,7 +155,7 @@ app.post('/add-room', async (req, res) => {
     }
 
     console.log('➡️ Creating room in DB');
-
+await dbConnect();
     const beds = Array.from({ length: totalBeds }, (_, i) => ({
       bedNumber: i + 1,
       isOccupied: false,
@@ -141,12 +179,12 @@ app.post('/add-room', async (req, res) => {
 });
 
 
-app.post('/get-rooms',(req,res)=>{
+app.post('/get-rooms',async(req,res)=>{
     const {id} = req.body;
     if(!id){
         return res.status(400).json({error:'Owner ID is required'});
     }
-    
+    await dbConnect();
     Room.find({pg_owner_id:id}).then((rooms)=>{
         console.log("Rooms fetched:",rooms[0].beds);
         return res.status(200).json({
@@ -181,6 +219,7 @@ app.post('/add-tenant', async (req, res) => {
     }
 
     // 1️⃣ Find room
+    await dbConnect();
     const roomDoc = await Room.findOne({
       pg_owner_id,
       room_name: room,
@@ -204,6 +243,7 @@ app.post('/add-tenant', async (req, res) => {
     }
 
     // 3️⃣ Create tenant
+    
     const tenants = await tenant.create({
       pg_owner_id,
       name: tenantName,
@@ -245,6 +285,7 @@ app.post('/get-dashboard', async (req, res) => {
     }
 
     // ---------- ROOMS ----------
+    await dbConnect();
     const rooms = await Room.find({ pg_owner_id: id });
 
     const totalRooms = rooms.length;
@@ -327,7 +368,7 @@ app.post('/search-tenants', async (req, res) => {
   if (!ownerId || !query) {
     return res.status(400).json({ error: 'Missing data' });
   }
-
+await dbConnect();
   const tenants = await tenant.find({
     pg_owner_id:ownerId,
     name: { $regex: query, $options: 'i' }
@@ -338,7 +379,7 @@ app.post('/search-tenants', async (req, res) => {
 
 app.post('/get-tenant-by-bed', async (req, res) => {
   const { ownerId, roomName, bedNumber } = req.body;
-
+await dbConnect();
   const tenant = await tenant.findOne({
     ownerId,
     roomName,
@@ -360,7 +401,7 @@ app.post('/record-payment', async (req, res) => {
     month,
     year
   } = req.body;
-
+await dbConnect();
   await payment.create({
     pg_owner_id:ownerId,
     tenant_id:tenantId,
@@ -375,7 +416,7 @@ app.post('/record-payment', async (req, res) => {
 
 app.post('/get-payments', async (req, res) => {
   const { ownerId, month } = req.body;
-
+await dbConnect();
   const payments = await payment.find({
     pg_owner_id:ownerId,
     month,
@@ -386,13 +427,5 @@ app.post('/get-payments', async (req, res) => {
 
 
 
-
-
-
-function connectToMongoDB_ATLAS(){
-    mongoose.connect('mongodb+srv://resto:1234@cluster0.g3xacoe.mongodb.net/PGAPP-db')
-      .then(() => console.log('MongoDB connected to Atlas DB'))
-      .catch((err) => console.error('MongoDB connection error:', err));
-}
 
 export default app;
