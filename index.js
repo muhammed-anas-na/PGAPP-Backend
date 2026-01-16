@@ -2,10 +2,10 @@ import Express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import mongoose from "mongoose";
-import owner from '../models/owner.js';
-import Room from '../models/Room.js';
-import tenant from '../models/tenant.js';
-import payment from '../models/payment.js';
+import owner from './models/owner.js';
+import Room from './models/Room.js';
+import tenant from './models/tenant.js';
+import payment from './models/payment.js';
 
 const app = Express();
 app.use(cors());
