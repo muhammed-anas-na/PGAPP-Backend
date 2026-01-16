@@ -27,6 +27,10 @@ app.use((req, res, next) => {
   next();
 });
 
+
+app.use('/health',(req,res)=>{
+    res.status(200).send('Server is healthy');
+})
 app.post('/register', async (req, res) => {
   try {
     const { phone_number, PG_name } = req.body;
