@@ -385,6 +385,68 @@ app.post('/get-payments', async (req, res) => {
 });
 
 
+app.post('/get-tenants',async(req,res)=>{
+  const {id} = req.body;
+  if(!id){
+    res.status(400).json({error:'Owner ID is required'});
+  }
+
+  const pgOwnerId = new mongoose.Types.ObjectId(id);
+const currentMonth = new Date().toISOString().slice(0, 7);
+
+const tenants = await tenant.aggregate([
+  {
+    $match: { pg_owner_id: pgOwnerId }
+  },
+  {
+    $lookup: {
+      from: 'rentpayments', // collection name (lowercase plural)
+      let: { tenantId: '$_id' },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ['$tenant_id', '$$tenantId'] },
+                { $eq: ['$month', currentMonth] }
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            status: 1,
+            paid_on: 1,
+            rent_amount: 1,
+            payment_method: 1,
+          }
+        }
+      ],
+      as: 'currentMonthPayment'
+    }
+  },
+  {
+    $addFields: {
+      isRentPaidThisMonth: {
+        $cond: [
+          { $gt: [{ $size: '$currentMonthPayment' }, 0] },
+          true,
+          false
+        ]
+      }
+    }
+  }
+]);
+console.log("Tenants with payment info:", tenants);
+
+return res.status(200).json({
+  message: 'Tenants fetched successfully',
+  data: tenants
+});
+
+})
+
 
 
 
