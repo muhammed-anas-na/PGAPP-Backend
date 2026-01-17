@@ -448,6 +448,77 @@ return res.status(200).json({
 })
 
 
+app.post('/get-tenant-details', async (req, res) => {
+  try {
+    const { tenantId } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'tenantId is required' });
+    }
+
+    const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    const tenantDetails = await tenant.aggregate([
+      {
+        $match: { _id: tenantObjectId }
+      },
+      {
+        $lookup: {
+          from: 'rentpayments',
+          localField: '_id',
+          foreignField: 'tenant_id',
+          as: 'paymentHistory'
+        }
+      },
+      {
+        $addFields: {
+          currentMonthPayment: {
+            $filter: {
+              input: '$paymentHistory',
+              as: 'payment',
+              cond: { $eq: ['$$payment.month', currentMonth] }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          isRentPaidThisMonth: {
+            $cond: [
+              { $gt: [{ $size: '$currentMonthPayment' }, 0] },
+              true,
+              false
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          paymentHistory: {
+            tenant_id: 0,
+            pg_owner_id: 0,
+            __v: 0
+          }
+        }
+      }
+    ]);
+
+    if (!tenantDetails.length) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+    console.log("Tenant details:", tenantDetails[0]);
+    return res.status(200).json({
+      message: 'Tenant details fetched successfully',
+      data: tenantDetails[0]
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 
 
 
