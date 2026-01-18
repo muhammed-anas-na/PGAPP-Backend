@@ -292,8 +292,6 @@ payments.forEach(rent => {
     if (rent.paid_on && rent.paid_on <= dueDate) {
       onTime++;
     }
-  } else {
-    notPaid++;
   }
 });
 
@@ -307,7 +305,7 @@ payments.forEach(rent => {
         revenueChange: '+0.0%',
         rentDetails: {
           paid,
-          notPaid,
+          notPaid: inmates.length - paid,
           onTime,
         },
         noticePeriod,
