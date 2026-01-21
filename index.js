@@ -516,6 +516,71 @@ app.post('/get-tenant-details', async (req, res) => {
   }
 });
 
+app.post('/get-tenants-by-room-id', async(req,res)=>{
+  const {roomId} = req.body;
+  if(!roomId){
+    return res.status(400).json({error:'Room ID is required'});
+  }
+
+try{
+   const room_Id = new mongoose.Types.ObjectId(roomId);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+const tenants = await tenant.aggregate([
+  {
+    $match: { room_id: room_Id }
+  },
+  {
+    $lookup: {
+      from: 'rentpayments', // collection name (lowercase plural)
+      let: { tenantId: '$_id' },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ['$tenant_id', '$$tenantId'] },
+                { $eq: ['$month', currentMonth] }
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            status: 1,
+            paid_on: 1,
+            rent_amount: 1,
+            payment_method: 1,
+          }
+        }
+      ],
+      as: 'currentMonthPayment'
+    }
+  },
+  {
+    $addFields: {
+      isRentPaidThisMonth: {
+        $cond: [
+          { $gt: [{ $size: '$currentMonthPayment' }, 0] },
+          true,
+          false
+        ]
+      }
+    }
+  }
+]);
+console.log("Tenants with payment info:", tenants);
+
+return res.status(200).json({
+  message: 'Tenants fetched successfully',
+  data: tenants
+});
+}catch(error){
+  console.error('Get tenants by room ID error:',error);
+  return res.status(500).json({error:'Internal server error'}); 
+}
+})
 
 
 
